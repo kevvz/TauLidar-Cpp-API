@@ -23,7 +23,7 @@
 
 
 
-#include "TauCam.h"
+#include "src/TauCam.h"
 
 
 int main(void)
@@ -31,8 +31,11 @@ int main(void)
     
 
     TauCam taucam;
-    
-    
+    std::cout<<"Start now" <<std::endl;
+   taucam.GetPointCloud();
+   taucam.GetPointCloud();
+   taucam.GetPointCloud();
+    std::cout<<"end" <<std::endl;
     
     
     
