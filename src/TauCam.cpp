@@ -65,7 +65,7 @@ void TauCam::ClearWriteBuffer() {
 int TauCam::ParseData() {// bit one is the data start bit, next three bits are the data size, last four bits are th checksum. For PC data, there is a 80 long header 
 	uint16_t data_size = getUint16_LittleEndian();
 	printf("%d\n",data_size);
-	printf("%d\n",size);
+	//printf("%d\n",size);
 	
 	if (size != data_size) {
 	    printf("Bad data, not saving\n");
@@ -97,7 +97,7 @@ std::vector< std::vector<float>* > TauCam::GetPointCloud() {
     int y = 0;
     int inval = 0;
     for(int i =0; i <  9600;i++) {
-	uint16_t temp = ((cam_buffer[i+1+8+80] << 8) | cam_buffer[i+8+80]) & 0x3FFF;
+	uint16_t temp = ((cam_buffer[2*i+1+8+80] << 8) | cam_buffer[2*i+8+80]) & 0x3FFF;
 	if (temp > 16000) {
 	    inval++;
 	    continue;
@@ -126,7 +126,43 @@ std::vector< std::vector<float>* > TauCam::GetPointCloud() {
     
 }
 
+void TauCam::FillDepth() {
+    GrabRawDistanceData();
+    int x = 0;
+    int y = 0;
+    int inval = 0;
+    for(int i =0; i <  9600;i++) {
+	uint16_t temp = ((cam_buffer[2*i+1+8+80] << 8) | cam_buffer[2*i+8+80]) & 0x3FFF;
+	if (temp > 16000) {
+	    depth_buffer[i] = -1.0;
+	    continue;
+	}
+	else {
+	    x = i % 160;
+	    y = i / 60;
+	    
+	    float gamma_a  = ALPHA_A + THETA_A * (x/160.0);
+	    float gamma_b = ALPHA_B + THETA_B * (y/60.0);
+            
+	    float Z = abs(0.001*temp*sin(gamma_a));
+	    Z = abs(Z*cos(gamma_b));
+	    depth_buffer[i] = Z;
+	    
+                
+	    
+                
+	}
+	
+	
+    }
+    
+    
+}
 
+void TauCam::GetDistanceAmplitudeData() {
+    
+    
+}
 
 uint32_t TauCam::CRC_Uint32(uint32_t crc, uint8_t data) {
     crc = crc ^ data;
@@ -264,7 +300,8 @@ void TauCam::SendCommand() { //Send whats in the write buffer to the Lidar.
 	write(fd,write_buffer,14);
 	usleep(5000);
        // sleep(5);
-	if (size == 0 ) return;
+	//if (size == 0 )
+	  
 	ret = poll(fds,1,1000);
 	int remaining_bits = size + 8;
 	int count = 0;
@@ -273,7 +310,7 @@ void TauCam::SendCommand() { //Send whats in the write buffer to the Lidar.
 	    
 	    while (remaining_bits > 0){
 		if (fds[0].revents & POLLRDNORM) {
-		res = read(fd,read_buffer,4096);
+		res = read(fd,read_buffer,2048);
 		usleep(5000);
 		//sleep(1);
 		if (res == -1){
@@ -282,12 +319,12 @@ void TauCam::SendCommand() { //Send whats in the write buffer to the Lidar.
 		}
 		  
 	
-		printf("%d\n",res);
+		//printf("%d\n",res);
 	
 		remaining_bits = remaining_bits - res;
 	
 	        h += res;
-		printf("total bits: %d\n",h);
+		//printf("total bits: %d\n",h);
 		
 		read_buffer[res] = 0;
 		for (int i =0; i < res; i++) {
@@ -302,6 +339,7 @@ void TauCam::SendCommand() { //Send whats in the write buffer to the Lidar.
 
     }
 	    }
+	  //  read(fd,read_buffer,2048);
 	}
 	ParseData();
 	
@@ -313,8 +351,9 @@ void TauCam::SetIntegrationTime3d(uint16_t index,uint16_t time) {
         size = 0;
 	ClearWriteBuffer();
 	write_buffer[1] = 0x00;
-	write_buffer[2] = index & 0xFF;
-	setUint16_LittleEndian(time,3);
+	write_buffer[3] = time & 0xFF;
+	write_buffer[4] = (time >>8) & 0xFF;
+	//setUint16_LittleEndian(time,3);
 	SendCommand();
 	
 	

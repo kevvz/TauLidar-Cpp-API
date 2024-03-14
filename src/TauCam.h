@@ -43,10 +43,13 @@ class TauCam {
      void SetIntegrationTime3d(uint16_t index,uint16_t time);
      int ParseData();
      void GrabRawDistanceData();
-     
+     void FillDepth();
+     void GetDistanceAmplitudeData();
      std::vector<std::vector<float>*> GetPointCloud();
      
      uint16_t getUint16_LittleEndian();
+     
+     float depth_buffer[9600];
      
    private:
    
@@ -54,6 +57,8 @@ class TauCam {
      char read_buffer[24000];
 
      char cam_buffer[24000];
+     
+     
      
      int fd;
      struct pollfd fds[1];
